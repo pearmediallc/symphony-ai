@@ -1,0 +1,626 @@
+<!-- static/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TikTok Script Generator (Alpha)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #FF004F;
+      --secondary: #00F2EA;
+      --dark: #161823;
+      --light: #FFFFFF;
+      --gray: #F7F7F8;
+      --text-gray: #545454;
+      --border: #E1E1E2;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+    }
+
+    .nav-header {
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 16px 0;
+      margin-bottom: 32px;
+    }
+
+    .nav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--dark);
+    }
+
+    .nav-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: white;
+    }
+
+    .nav-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--text-gray);
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--primary);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--text-gray);
+      font-size: 1.1rem;
+      margin-bottom: 32px;
+    }
+
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--gray);
+    }
+
+    .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+    .col { flex: 1 1 320px; min-width: 280px; }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+      color: var(--dark);
+      font-size: 0.95rem;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 14px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 0, 79, 0.1);
+    }
+
+    textarea { min-height: 140px; resize: vertical; }
+
+    button {
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(255, 0, 79, 0.3);
+    }
+
+    .btn-secondary {
+      background: white;
+      border: 2px solid var(--border);
+      color: var(--dark);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.success { background: #10b981; color: white; }
+    .badge.mono { background: var(--gray); color: var(--dark); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+    .muted { color: var(--text-gray); font-size: 0.9rem; }
+    .mono { font-family: 'SF Mono', Monaco, 'Inconsolata', 'Fira Code', monospace; }
+
+    .status {
+      padding: 12px;
+      background: var(--gray);
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .alert-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      color: white;
+    }
+
+    .alert-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.25rem;
+    }
+
+    .alert-banner a {
+      color: white;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      h1 { font-size: 1.8rem; }
+      .main-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-header">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <div class="nav-icon">🎬</div>
+        <span class="nav-title">TikTok Symphony AI</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/script_generator" class="nav-link active">Script Generator</a>
+        <a href="/avatar" class="nav-link">Avatar Videos</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="alert-banner">
+      <h2>📝 AI Script Generator</h2>
+      <p>Generate creative TikTok scripts with AI. Need speaking avatars? <a href="/avatar">Try Avatar Videos →</a></p>
+    </div>
+
+    <h1>Generate TikTok Scripts</h1>
+    <p class="subtitle">Create engaging scripts for your TikTok content using AI-powered generation</p>
+
+    <div class="main-card">
+      <div class="section-title">Configuration</div>
+    <div class="row">
+      <div class="col">
+        <label>Access-Token</label>
+        <input id="accessToken" type="password" placeholder="Paste Access-Token here" />
+      </div>
+      <div class="col">
+        <label>Mode</label>
+        <select id="mode">
+          <option value="CUSTOM" selected>CUSTOM (prompt only)</option>
+          <option value="PRODUCT">PRODUCT (structured)</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>Scripts to Generate</label>
+        <input id="count" type="number" min="1" max="8" value="3" />
+      </div>
+    </div>
+
+    <div id="customArea" class="col" style="margin-top:12px;">
+      <label>Custom Prompt (English)</label>
+      <textarea id="customPrompt" placeholder="e.g., Create 3 TikTok-style 30s UGC scripts for a US home insurance brand offering seniors rates from $49/month. Hook in 2 seconds, plain language, on-screen text cues, and a CTA like 'Check your eligibility today'."></textarea>
+    </div>
+
+    <div id="productArea" style="display:none; margin-top:12px;">
+      <div class="row">
+        <div class="col">
+          <label>Product Name</label>
+          <input id="pName" placeholder="e.g., Home Insurance 2025 – Senior Plan" />
+        </div>
+        <div class="col">
+          <label>Brand</label>
+          <input id="pBrand" placeholder="e.g., Pear Insurance" />
+        </div>
+        <div class="col">
+          <label>Price (USD)</label>
+          <input id="pPrice" type="number" step="0.01" placeholder="49.00" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div class="col">
+          <label>Description</label>
+          <input id="pDesc" placeholder="Short description..." />
+        </div>
+        <div class="col">
+          <label>Selling Points (comma-separated)</label>
+          <input id="pSps" placeholder="As low as $49/month, Fast eligibility, A-rated carriers" />
+        </div>
+        <div class="col">
+          <label>Video Duration</label>
+          <select id="pDur">
+            <option value="">(auto)</option>
+            <option value="15S">15S</option>
+            <option value="30S">30S</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div class="col">
+          <label>Video IDs (comma-separated)</label>
+          <input id="pVideos" placeholder="v10033g5..., v10033g5..." />
+        </div>
+        <div class="col">
+          <label>Image URLs (comma-separated)</label>
+          <input id="pImages" placeholder="https://..., https://..." />
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <div class="col">
+        <label>Tone</label>
+        <input id="tone" placeholder="Friendly | Confident | Professional | All | custom" value="Friendly"/>
+      </div>
+      <div class="col">
+        <label>Style</label>
+        <input id="style" placeholder="Product focused | Emotional appeal | Challenges | ..." value="Product focused"/>
+      </div>
+      <div class="col">
+        <label>Point of View</label>
+        <input id="pov" placeholder="From consumer | From brand | All | custom" value="From consumer"/>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="col">
+        <label>Language</label>
+        <input id="lang" placeholder="en | es | de | fr | id | ml | vi" value="en"/>
+      </div>
+      <div class="col">
+        <label>Industry</label>
+        <input id="industry" placeholder="Financial services | Tech & electronics | All ..." value="All"/>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <div class="col">
+        <button id="generateBtn" class="btn-primary">Generate Scripts</button>
+      </div>
+      <div class="col">
+        <button id="listBtn" class="btn-secondary">List My Scripts</button>
+      </div>
+    </div>
+
+      <p id="status" class="status" style="margin-top:16px;"></p>
+    </div>
+
+    <div id="results" class="grid"></div>
+  </div>
+
+  <script>
+    const qs = (s) => document.querySelector(s);
+    const status = qs("#status");
+    const results = qs("#results");
+
+    // Toggle mode UI
+    qs("#mode").addEventListener("change", (e) => {
+      const mode = e.target.value;
+      qs("#customArea").style.display = mode === "CUSTOM" ? "" : "none";
+      qs("#productArea").style.display = mode === "PRODUCT" ? "" : "none";
+    });
+
+    function renderScripts(list, pageInfo = null) {
+      results.innerHTML = "";
+
+      // Add header with pagination info
+      if (pageInfo) {
+        const header = document.createElement("div");
+        header.className = "card";
+        header.style.background = "#f8fafc";
+        header.innerHTML = `
+          <h2 style="margin: 0 0 8px 0;">📝 Your Generated Scripts</h2>
+          <p class="muted" style="margin: 0;">
+            Showing ${list.length} of ${pageInfo.total_number} total scripts
+            (Page ${pageInfo.page} of ${pageInfo.total_page})
+          </p>
+          ${pageInfo.total_page > 1 ? `
+            <div style="margin-top: 12px;">
+              <button id="prevPage" class="btn-secondary" ${pageInfo.page <= 1 ? 'disabled' : ''}>← Previous</button>
+              <span style="margin: 0 12px;">Page ${pageInfo.page} of ${pageInfo.total_page}</span>
+              <button id="nextPage" class="btn-secondary" ${pageInfo.page >= pageInfo.total_page ? 'disabled' : ''}>Next →</button>
+            </div>
+          ` : ''}
+        `;
+        results.appendChild(header);
+      }
+
+      if (!list || !list.length) {
+        const emptyCard = document.createElement("div");
+        emptyCard.className = "card";
+        emptyCard.innerHTML = "<p class='muted'>No scripts found. Generate some scripts first!</p>";
+        results.appendChild(emptyCard);
+        return;
+      }
+
+      list.forEach((s, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="row" style="justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div>
+              <span class="badge mono">Script #${((pageInfo?.page || 1) - 1) * 20 + index + 1}</span>
+              <span class="badge mono">ID: ${s.script_id || "N/A"}</span>
+            </div>
+            <button class="btn-secondary" data-copy="${(s.script || "").replace(/"/g, "&quot;")}">📋 Copy Script</button>
+          </div>
+          <h3 style="margin:0 0 8px 0; color: #111827;">${s.title || "Generated Script"}</h3>
+          <div style="max-height: 200px; overflow-y: auto; background: #f8fafc; padding: 12px; border-radius: 6px;">
+            <pre class="mono" style="white-space:pre-wrap; font-size:13px; margin:0;">${s.script || "No script content"}</pre>
+          </div>
+          <div class="muted" style="margin-top: 8px; font-size: 11px;">
+            Characters: ${(s.script || "").length} |
+            Created: ${s.create_time || "Unknown"} |
+            Updated: ${s.update_time || "Unknown"}
+          </div>
+        `;
+        results.appendChild(card);
+      });
+
+      // Copy buttons
+      [...document.querySelectorAll("button[data-copy]")].forEach(btn => {
+        btn.addEventListener("click", () => {
+          const text = btn.getAttribute("data-copy");
+          navigator.clipboard.writeText(text).then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = "✅ Copied!";
+            btn.style.background = "#16a34a";
+            btn.style.color = "white";
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.style.background = "";
+              btn.style.color = "";
+            }, 2000);
+          });
+        });
+      });
+
+      // Pagination buttons
+      const prevBtn = document.getElementById("prevPage");
+      const nextBtn = document.getElementById("nextPage");
+      if (prevBtn && pageInfo?.page > 1) {
+        prevBtn.addEventListener("click", () => loadScriptsPage(pageInfo.page - 1));
+      }
+      if (nextBtn && pageInfo?.page < pageInfo?.total_page) {
+        nextBtn.addEventListener("click", () => loadScriptsPage(pageInfo.page + 1));
+      }
+    }
+
+    async function createTask() {
+      const access_token = qs("#accessToken").value.trim();
+      if (!access_token) { alert("Please paste Access-Token"); return; }
+
+      const mode = qs("#mode").value;
+      const count = Math.max(1, Math.min(8, parseInt(qs("#count").value || "3", 10)));
+
+      const body = { access_token, mode, script_generation_count: count };
+
+      if (mode === "CUSTOM") {
+        const custom_prompt = qs("#customPrompt").value.trim();
+        if (!custom_prompt) { alert("Enter a custom prompt"); return; }
+        body.custom_prompt = custom_prompt;
+        // Don't include script_info for CUSTOM mode - TikTok API doesn't allow it
+      } else {
+        // script_info is only for PRODUCT mode
+        const script_info = {
+          tone: qs("#tone").value || "Friendly",
+          style: qs("#style").value || "Product focused",
+          point_of_view: qs("#pov").value || "From consumer",
+          script_language: qs("#lang").value || "en",
+          relevant_industry: qs("#industry").value || "All"
+        };
+        body.script_info = script_info;
+        const name = qs("#pName").value.trim();
+        const brand = qs("#pBrand").value.trim();
+        const price = parseFloat(qs("#pPrice").value || "0");
+        const description = qs("#pDesc").value.trim();
+        const sps = (qs("#pSps").value || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 10);
+        const video_duration = qs("#pDur").value;
+        const vids = (qs("#pVideos").value || "").split(",").map(s => s.trim()).filter(Boolean);
+        const imgs = (qs("#pImages").value || "").split(",").map(s => s.trim()).filter(Boolean);
+
+        if (!name || !brand || !description) {
+          alert("Please fill Product Name, Brand and Description");
+          return;
+        }
+
+        body.product_info = {
+          name, brand, price: isNaN(price) ? 0 : price, currency: "USD",
+          description, selling_points: sps
+        };
+        if (video_duration) body.video_duration = video_duration;
+        if (vids.length || imgs.length) {
+          body.media_list = {};
+          if (vids.length) body.media_list.video_id_list = vids;
+          if (imgs.length) body.media_list.image_url_list = imgs;
+        }
+      }
+
+      status.textContent = "Creating task…";
+      results.innerHTML = "";
+
+      console.log("Sending request with body:", body);
+
+      const res = await fetch("/api/create_task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json();
+      console.log("Response from server:", json);
+
+      if (json?.data?.task_id) {
+        status.textContent = "Task created. Polling for results…";
+        pollTask(access_token, json.data.task_id);
+      } else {
+        status.textContent = `Failed: ${json?.message || json?.error || "Unknown error"}`;
+        results.innerHTML = `
+          <div class="card" style="background: #fee2e2; border-color: #ef4444;">
+            <h3 style="color: #dc2626;">Error Creating Task</h3>
+            ${json?.error ? `<p><strong>Error:</strong> ${json.error}</p>` : ''}
+            ${json?.message ? `<p><strong>Message:</strong> ${json.message}</p>` : ''}
+            ${json?.details ? `<p><strong>Details:</strong> ${json.details}</p>` : ''}
+            <details style="margin-top: 12px;">
+              <summary>Full Response</summary>
+              <pre class="mono" style="margin-top: 8px;">${JSON.stringify(json, null, 2)}</pre>
+            </details>
+          </div>`;
+      }
+    }
+
+    async function pollTask(access_token, task_id) {
+      const poll = async () => {
+        const url = `/api/task_status?access_token=${encodeURIComponent(access_token)}&task_id=${encodeURIComponent(task_id)}`;
+        const r = await fetch(url);
+        const j = await r.json();
+        const st = j?.data?.status || "UNKNOWN";
+        status.textContent = `Status: ${st}`;
+
+        if (st === "SUCCESS" || st === "PARTIAL_SUCCESS") {
+          renderScripts(j?.data?.list || []);
+          status.textContent = `Done: ${st}`;
+          return true;
+        }
+        if (st === "FAILED") {
+          results.innerHTML = `<pre class="mono">${JSON.stringify(j, null, 2)}</pre>`;
+          return true;
+        }
+        return false;
+      };
+
+      // quick poll loop
+      for (let i = 0; i < 30; i++) {
+        const done = await poll();
+        if (done) return;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      status.textContent = "Still processing… try List My Scripts.";
+    }
+
+    let currentPage = 1;
+
+    async function listScripts() {
+      loadScriptsPage(1);
+    }
+
+    async function loadScriptsPage(page = 1) {
+      const access_token = qs("#accessToken").value.trim();
+      if (!access_token) { alert("Please paste Access-Token"); return; }
+
+      currentPage = page;
+      status.textContent = `Fetching scripts (page ${page})…`;
+
+      try {
+        const r = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=20`);
+        const j = await r.json();
+
+        if (j?.data?.list) {
+          renderScripts(j.data.list, j.data.page_info);
+          const total = j.data.page_info?.total_number || 0;
+          const showing = j.data.list.length;
+          status.textContent = `Showing ${showing} of ${total} scripts (page ${page})`;
+        } else {
+          status.textContent = `Error: ${j?.message || 'Failed to fetch scripts'}`;
+          results.innerHTML = `<div class="card"><pre class="mono">${JSON.stringify(j, null, 2)}</pre></div>`;
+        }
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        results.innerHTML = `<div class="card"><p class="muted">Failed to load scripts. Please check your access token.</p></div>`;
+      }
+    }
+
+    qs("#generateBtn").addEventListener("click", createTask);
+    qs("#listBtn").addEventListener("click", listScripts);
+  </script>
+</body>
+</html>

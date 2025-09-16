@@ -1,0 +1,8 @@
+# Web framework
+Flask==3.0.3
+
+# Enable Cross-Origin Resource Sharing (CORS) for frontend ↔ backend calls
+flask-cors==4.0.0
+
+# HTTP client for calling TikTok API
+requests==2.32.3
