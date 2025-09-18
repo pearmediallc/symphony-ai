@@ -338,14 +338,10 @@
     <h1>Create Avatar Speaking Videos</h1>
     <p class="subtitle">Choose from 80+ professional avatars and bring your scripts to life with AI-powered video generation</p>
 
-    <!-- Step 1: Access Token -->
+    <!-- Step 1: Load Avatars -->
     <div class="card">
-      <h3><span class="step-number">1</span> Access Token</h3>
-    <div class="col">
-      <label>Access-Token</label>
-      <input id="accessToken" type="password" placeholder="Paste your TikTok Access-Token here" />
-    </div>
-      <button id="loadAvatarsBtn" class="btn-primary" style="margin-top: 12px; width: auto;">Load Available Avatars</button>
+      <h3><span class="step-number">1</span> Load Available Avatars</h3>
+      <button id="loadAvatarsBtn" class="btn-primary" style="width: auto;">Load Available Avatars</button>
       <p id="loadStatus" class="muted" style="margin-top: 8px;"></p>
     </div>
 
@@ -455,6 +451,33 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
     let scriptsPage = 1;
     let scriptsPerPage = 10;
 
+    // Variables to store config from backend
+    let CONFIG = {
+      access_token: '',
+      advertiser_id: ''
+    };
+
+    // Fetch configuration from backend on page load
+    async function fetchConfig() {
+      try {
+        const response = await fetch('/api/get_config');
+        const data = await response.json();
+        CONFIG.access_token = data.access_token || '';
+        CONFIG.advertiser_id = data.advertiser_id || '';
+        console.log('Configuration loaded from backend');
+
+        // Auto-load avatars if access token is available
+        if (CONFIG.access_token) {
+          loadAvatars();
+        }
+      } catch (error) {
+        console.error('Failed to fetch configuration:', error);
+      }
+    }
+
+    // Call fetchConfig on page load
+    fetchConfig();
+
     // Character counter for manual entry
     qs("#avatarScript").addEventListener("input", (e) => {
       const count = e.target.value.length;
@@ -479,9 +502,9 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
 
     // Load existing scripts
     async function loadExistingScripts() {
-      const access_token = qs("#accessToken").value.trim();
+      const access_token = CONFIG.access_token;
       if (!access_token) {
-        qs("#scriptsList").innerHTML = '<p class="muted">Please enter your Access-Token first</p>';
+        qs("#scriptsList").innerHTML = '<p class="muted">Access token not configured. Please check environment variables.</p>';
         return;
       }
 
@@ -652,16 +675,16 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
     // Refresh scripts
     qs("#refreshScriptsBtn").addEventListener("click", loadExistingScripts);
 
-    // Load avatars
-    qs("#loadAvatarsBtn").addEventListener("click", async () => {
-      const access_token = qs("#accessToken").value.trim();
+    // Load avatars function
+    async function loadAvatars() {
+      const access_token = CONFIG.access_token;
       if (!access_token) {
-        alert("Please enter your Access-Token first");
+        qs("#loadStatus").textContent = "Access token not configured. Please check environment variables.";
         return;
       }
 
       qs("#loadStatus").textContent = "Loading avatars...";
-      qs("#loadAvatarsBtn").disabled = true;
+      if (qs("#loadAvatarsBtn")) qs("#loadAvatarsBtn").disabled = true;
 
       try {
         const response = await fetch(`/api/get_avatars?access_token=${encodeURIComponent(access_token)}&page_size=100`);
@@ -678,8 +701,11 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
         qs("#loadStatus").textContent = `Error: ${error.message}`;
       }
 
-      qs("#loadAvatarsBtn").disabled = false;
-    });
+      if (qs("#loadAvatarsBtn")) qs("#loadAvatarsBtn").disabled = false;
+    }
+
+    // Load avatars button click event
+    qs("#loadAvatarsBtn").addEventListener("click", loadAvatars);
 
     function renderAvatars(avatars) {
       const grid = qs("#avatarGrid");
@@ -926,9 +952,9 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
 
     // List all videos
     qs("#listVideosBtn").addEventListener("click", async () => {
-      const access_token = qs("#accessToken").value.trim();
+      const access_token = CONFIG.access_token;
       if (!access_token) {
-        alert("Please enter your Access-Token");
+        alert("Access token not configured. Please check environment variables.");
         return;
       }
 
@@ -1013,9 +1039,9 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       document.body.appendChild(dialog);
     }
 
-    // Perform upload to TikTok Ads
+    // Perform upload to TikTok Ads (Note: Upload endpoints have been removed from backend)
     async function performUploadToAds(videoUrl, taskId) {
-      const access_token = qs("#accessToken").value.trim();
+      const access_token = CONFIG.access_token;
       const advertiser_id = document.getElementById('uploadAdvertiserId').value.trim();
       const video_name = document.getElementById('uploadVideoName').value.trim();
       const statusDiv = document.getElementById('uploadDialogStatus');
