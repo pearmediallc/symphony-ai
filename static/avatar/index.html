@@ -797,21 +797,28 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
     }
 
     // Create video
-    qs("#createVideoBtn").addEventListener("click", async () => {
-      const access_token = qs("#accessToken").value.trim();
+    qs("#createVideoBtn")?.addEventListener("click", async () => {
+      console.log("Create video button clicked");
+
+      const access_token = CONFIG.access_token;
       let script = '';
 
       // Get script from either selected or manual entry
       if (selectedScript) {
         script = selectedScript;
+        console.log("Using selected script:", script.substring(0, 50) + "...");
       } else if (qs("#manualScriptSection").style.display !== "none") {
         script = qs("#avatarScript").value.trim();
+        console.log("Using manual script:", script.substring(0, 50) + "...");
       }
 
       const videoName = qs("#videoName").value.trim();
+      console.log("Video name:", videoName);
+      console.log("Selected Avatar ID:", selectedAvatarId);
+      console.log("Access token available:", !!access_token);
 
       if (!access_token) {
-        alert("Please enter your Access-Token");
+        alert("Access token not configured. Please check environment variables.");
         return;
       }
       if (!selectedAvatarId) {
@@ -827,8 +834,21 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
         return;
       }
 
-      qs("#createStatus").textContent = "Creating avatar video task...";
-      qs("#createVideoBtn").disabled = true;
+      // Update status with better error handling
+      const statusElement = qs("#createStatus");
+      if (statusElement) {
+        statusElement.textContent = "Creating avatar video task...";
+        statusElement.style.color = "#1a73e8";
+      } else {
+        console.error("createStatus element not found!");
+      }
+
+      const createBtn = qs("#createVideoBtn");
+      if (createBtn) {
+        createBtn.disabled = true;
+      } else {
+        console.error("createVideoBtn element not found!");
+      }
 
       const payload = {
         access_token,
@@ -840,47 +860,68 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       };
 
       try {
+        console.log("Sending request to /api/create_avatar_video_task");
+        console.log("Payload:", payload);
+
         const response = await fetch("/api/create_avatar_video_task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const data = await response.json();
 
-        console.log("Create task response:", data); // Debug log
+        console.log("Response status:", response.status);
+        const data = await response.json();
+        console.log("Create task response:", data);
 
         if (data.code === 0 && data.data?.list?.[0]?.task_id) {
           const taskId = data.data.list[0].task_id;
-          qs("#createStatus").innerHTML = `
-            <strong>✅ Task created successfully!</strong>
-            <br><span class="muted">Task ID: ${taskId}</span>
-            <br><span class="muted">Now monitoring progress...</span>
-          `;
-          qs("#resultsSection").style.display = "block";
+
+          if (statusElement) {
+            statusElement.innerHTML = `
+              <strong>✅ Task created successfully!</strong>
+              <br><span class="muted">Task ID: ${taskId}</span>
+              <br><span class="muted">Now monitoring progress...</span>
+            `;
+            statusElement.style.color = "#10b981";
+          }
+
+          const resultsSection = qs("#resultsSection");
+          if (resultsSection) {
+            resultsSection.style.display = "block";
+          }
 
           // Small delay before starting polling to ensure task is registered
           setTimeout(() => {
             pollTaskStatus(access_token, taskId);
           }, 1000);
         } else {
-          qs("#createStatus").innerHTML = `
-            <strong>❌ Error creating task</strong>
-            <br><span class="muted">${data.message || 'Unknown error'}</span>
-            ${data.data?.list?.[0]?.error_msg ? `<br><span class="muted">Details: ${data.data.list[0].error_msg}</span>` : ''}
-          `;
+          if (statusElement) {
+            statusElement.innerHTML = `
+              <strong>❌ Error creating task</strong>
+              <br><span class="muted">${data.message || 'Unknown error'}</span>
+              ${data.data?.list?.[0]?.error_msg ? `<br><span class="muted">Details: ${data.data.list[0].error_msg}</span>` : ''}
+            `;
+            statusElement.style.color = "#dc2626";
+          }
         }
       } catch (error) {
         console.error("Create task error:", error);
-        qs("#createStatus").innerHTML = `
-          <strong>❌ Network error</strong>
-          <br><span class="muted">${error.message}</span>
-        `;
+        if (statusElement) {
+          statusElement.innerHTML = `
+            <strong>❌ Network error</strong>
+            <br><span class="muted">${error.message}</span>
+          `;
+          statusElement.style.color = "#dc2626";
+        }
       }
 
-      qs("#createVideoBtn").disabled = false;
+      if (createBtn) {
+        createBtn.disabled = false;
+      }
     });
 
     async function pollTaskStatus(access_token, taskId) {
+      console.log("Starting to poll task status for:", taskId);
       const maxAttempts = 60; // 5 minutes max
       let attempts = 0;
       let statusMessages = {
@@ -890,22 +931,28 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
         'FAILED': '❌ Video generation failed'
       };
 
+      const statusElement = qs("#createStatus");
+
       const poll = async () => {
         try {
           const response = await fetch(`/api/get_avatar_video_task_status?access_token=${encodeURIComponent(access_token)}&task_ids=${JSON.stringify([taskId])}`);
           const data = await response.json();
 
-          console.log("Poll response:", data); // Debug log
+          console.log("Poll response:", data);
 
           if (data.code === 0 && data.data?.list?.[0]) {
             const task = data.data.list[0];
             const status = task.status || 'UNKNOWN';
+            console.log("Task status:", status);
 
             // Update status with friendly message
-            qs("#createStatus").innerHTML = `
-              <strong>${statusMessages[status] || `Status: ${status}`}</strong>
-              <br><span class="muted">Attempt ${attempts} of ${maxAttempts}</span>
-            `;
+            if (statusElement) {
+              statusElement.innerHTML = `
+                <strong>${statusMessages[status] || `Status: ${status}`}</strong>
+                <br><span class="muted">Attempt ${attempts} of ${maxAttempts}</span>
+              `;
+              statusElement.style.color = status === 'SUCCESS' ? '#10b981' : '#1a73e8';
+            }
 
             if (status === "SUCCESS") {
               renderTaskResult(task, true);
@@ -917,39 +964,50 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
             // Continue polling for SUBMITTED, PROCESSING
           } else {
             // Handle error response
-            qs("#createStatus").innerHTML = `
-              <strong>⚠️ Checking status...</strong>
-              <br><span class="muted">Response: ${data.message || 'Unknown'}</span>
-            `;
+            if (statusElement) {
+              statusElement.innerHTML = `
+                <strong>⚠️ Checking status...</strong>
+                <br><span class="muted">Response: ${data.message || 'Unknown'}</span>
+              `;
+              statusElement.style.color = '#eab308';
+            }
           }
         } catch (error) {
           console.error("Polling error:", error);
-          qs("#createStatus").innerHTML = `
-            <strong>⚠️ Network error while checking status</strong>
-            <br><span class="muted">${error.message}</span>
-          `;
+          if (statusElement) {
+            statusElement.innerHTML = `
+              <strong>⚠️ Network error while checking status</strong>
+              <br><span class="muted">${error.message}</span>
+            `;
+            statusElement.style.color = '#dc2626';
+          }
         }
         return false;
       };
 
       // Initial status
-      qs("#createStatus").innerHTML = `
-        <strong>🔄 Starting video generation...</strong>
-        <br><span class="muted">This may take 1-3 minutes depending on script length</span>
-      `;
+      if (statusElement) {
+        statusElement.innerHTML = `
+          <strong>🔄 Starting video generation...</strong>
+          <br><span class="muted">This may take 1-3 minutes depending on script length</span>
+        `;
+        statusElement.style.color = '#1a73e8';
+      }
 
       // Poll every 5 seconds
       const pollInterval = setInterval(async () => {
         attempts++;
+        console.log(`Polling attempt ${attempts}/${maxAttempts}`);
         const done = await poll();
 
         if (done || attempts >= maxAttempts) {
           clearInterval(pollInterval);
-          if (!done) {
-            qs("#createStatus").innerHTML = `
+          if (!done && statusElement) {
+            statusElement.innerHTML = `
               <strong>⏱️ Timeout reached</strong>
               <br><span class="muted">The video may still be processing. Check "List All My Avatar Videos" for results.</span>
             `;
+            statusElement.style.color = '#eab308';
           }
         }
       }, 5000);
