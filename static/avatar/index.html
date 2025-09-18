@@ -373,31 +373,15 @@
       <!-- Simple navigation -->
       <div class="row" style="margin-bottom: 12px;">
         <div class="col">
-          <p class="muted">Browse through your scripts using the pagination below. Click on any script to select it.</p>
-        </div>
-        <div style="flex: 0 0 auto;">
-          <button id="refreshScriptsBtn" class="btn-secondary" style="width: auto;">↻ Refresh</button>
+          <button id="loadScriptsBtn" class="btn-primary" style="width: auto;">📝 Load My Scripts</button>
         </div>
       </div>
 
-      <!-- Scripts List -->
-      <div id="scriptsList" style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px;">
-        <p class="muted">Loading scripts...</p>
-      </div>
+      <!-- Status -->
+      <p id="scriptsStatus" class="muted" style="margin-bottom: 16px;"></p>
 
-      <!-- Pagination -->
-      <div id="scriptsPagination" style="margin-top: 12px; text-align: center;">
-        <button id="prevScriptPage" class="btn-secondary" style="width: auto;" disabled>← Previous</button>
-        <span id="scriptPageInfo" style="margin: 0 12px;">Page 1</span>
-        <button id="nextScriptPage" class="btn-secondary" style="width: auto;">Next →</button>
-        <div style="margin-top: 8px;">
-          <input type="number" id="jumpToPage" placeholder="Page #" style="width: 80px; padding: 4px 8px; font-size: 12px; border: 1px solid #e5e7eb; border-radius: 4px; margin: 0 4px;">
-          <button id="jumpToPageBtn" class="btn-secondary" style="padding: 4px 8px; font-size: 12px;">Go</button>
-        </div>
-        <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
-          Showing <span id="scriptRangeInfo">1-25</span> of <span id="totalScriptsInfo">0</span> scripts
-        </div>
-      </div>
+      <!-- Scripts Results -->
+      <div id="scriptsResults" class="grid"></div>
     </div>
 
     <!-- Manual Script Entry -->
@@ -452,10 +436,11 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
     let selectedAvatarId = null;
     let selectedAvatarName = '';
     let selectedScript = '';
-    let currentScripts = [];
+
+    // Script listing variables (copied from script generator)
+    const scriptsStatus = qs("#scriptsStatus");
+    const scriptsResults = qs("#scriptsResults");
     let currentScriptPage = 1;
-    let totalScriptPages = 1;
-    let totalScriptsCount = 0;
 
     // Variables to store config from backend
     let CONFIG = {
@@ -496,7 +481,7 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       qs("#existingScriptsSection").style.display = "block";
       qs("#manualScriptSection").style.display = "none";
       qs("#selectedScriptPreview").style.display = "none";
-      loadExistingScripts();
+      selectedScript = '';
     });
 
     qs("#writeNewBtn").addEventListener("click", () => {
@@ -506,100 +491,134 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       selectedScript = '';
     });
 
-    // Load existing scripts (like script generator - one page at a time)
-    async function loadExistingScripts() {
-      loadScriptPage(1);
+    // Script listing functions (copied exactly from script generator)
+    function renderScripts(list, pageInfo = null) {
+      scriptsResults.innerHTML = "";
+
+      // Add header with pagination info
+      if (pageInfo) {
+        const header = document.createElement("div");
+        header.className = "card";
+        header.style.background = "#f8fafc";
+        header.innerHTML = `
+          <h2 style="margin: 0 0 8px 0;">📝 Your Generated Scripts</h2>
+          <p class="muted" style="margin: 0;">
+            Showing ${list.length} of ${pageInfo.total_number} total scripts
+            (Page ${pageInfo.page} of ${pageInfo.total_page})
+          </p>
+          ${pageInfo.total_page > 1 ? `
+            <div style="margin-top: 12px;">
+              <button id="prevPage" class="btn-secondary" ${pageInfo.page <= 1 ? 'disabled' : ''}>← Previous</button>
+              <span style="margin: 0 12px;">Page ${pageInfo.page} of ${pageInfo.total_page}</span>
+              <button id="nextPage" class="btn-secondary" ${pageInfo.page >= pageInfo.total_page ? 'disabled' : ''}>Next →</button>
+            </div>
+          ` : ''}
+        `;
+        scriptsResults.appendChild(header);
+      }
+
+      if (!list || !list.length) {
+        const emptyCard = document.createElement("div");
+        emptyCard.className = "card";
+        emptyCard.innerHTML = "<p class='muted'>No scripts found. Generate some scripts first!</p>";
+        scriptsResults.appendChild(emptyCard);
+        return;
+      }
+
+      list.forEach((s, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.cursor = "pointer";
+        card.style.transition = "all 0.3s ease";
+
+        card.innerHTML = `
+          <div class="row" style="justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div>
+              <span class="badge mono">Script #${((pageInfo?.page || 1) - 1) * 20 + index + 1}</span>
+              <span class="badge mono">ID: ${s.script_id || "N/A"}</span>
+            </div>
+            <button class="btn-primary select-script-btn" style="width: auto;">📋 Select Script</button>
+          </div>
+          <h3 style="margin:0 0 8px 0; color: #111827;">${s.title || "Generated Script"}</h3>
+          <div style="max-height: 200px; overflow-y: auto; background: #f8fafc; padding: 12px; border-radius: 6px;">
+            <pre class="mono" style="white-space:pre-wrap; font-size:13px; margin:0;">${s.script || "No script content"}</pre>
+          </div>
+          <div class="muted" style="margin-top: 8px; font-size: 11px;">
+            Characters: ${(s.script || "").length} |
+            Created: ${s.create_time || "Unknown"} |
+            Updated: ${s.update_time || "Unknown"}
+          </div>
+        `;
+
+        // Add hover effects
+        card.addEventListener('mouseenter', () => {
+          card.style.borderColor = '#FF004F';
+          card.style.boxShadow = '0 5px 20px rgba(255, 0, 79, 0.1)';
+        });
+
+        card.addEventListener('mouseleave', () => {
+          card.style.borderColor = '';
+          card.style.boxShadow = '';
+        });
+
+        // Add script selection functionality
+        const selectBtn = card.querySelector('.select-script-btn');
+        selectBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectScript(s);
+        });
+
+        card.addEventListener("click", () => selectScript(s));
+
+        scriptsResults.appendChild(card);
+      });
+
+      // Pagination buttons
+      const prevBtn = document.getElementById("prevPage");
+      const nextBtn = document.getElementById("nextPage");
+      if (prevBtn && pageInfo?.page > 1) {
+        prevBtn.addEventListener("click", () => loadScriptsPage(pageInfo.page - 1));
+      }
+      if (nextBtn && pageInfo?.page < pageInfo?.total_page) {
+        nextBtn.addEventListener("click", () => loadScriptsPage(pageInfo.page + 1));
+      }
     }
 
-    async function loadScriptPage(page = 1) {
+    async function loadScripts() {
+      loadScriptsPage(1);
+    }
+
+    async function loadScriptsPage(page = 1) {
       const access_token = CONFIG.access_token;
       if (!access_token) {
-        qs("#scriptsList").innerHTML = '<p class="muted">Access token not configured. Please check environment variables.</p>';
+        alert("Access token not configured. Please check environment variables.");
         return;
       }
 
       currentScriptPage = page;
-      qs("#scriptsList").innerHTML = `<p class="muted">Loading scripts (page ${page})...</p>`;
+      scriptsStatus.textContent = `Fetching scripts (page ${page})…`;
 
       try {
-        const response = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=20`);
-        const data = await response.json();
+        const r = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=20`);
+        const j = await r.json();
 
-        if (data?.data?.list) {
-          currentScripts = data.data.list;
-          totalScriptPages = data.data.page_info?.total_page || 1;
-          totalScriptsCount = data.data.page_info?.total_number || 0;
-
-          displayScripts();
-
-          qs("#scriptsList").innerHTML = `<p class="muted">Showing ${currentScripts.length} scripts from page ${page}</p>`;
+        if (j?.data?.list) {
+          renderScripts(j.data.list, j.data.page_info);
+          const total = j.data.page_info?.total_number || 0;
+          const showing = j.data.list.length;
+          scriptsStatus.textContent = `Showing ${showing} of ${total} scripts (page ${page})`;
         } else {
-          qs("#scriptsList").innerHTML = '<p class="muted">No scripts found. Generate some scripts first!</p>';
-          currentScripts = [];
-          totalScriptPages = 1;
-          totalScriptsCount = 0;
+          scriptsStatus.textContent = `Error: ${j?.message || 'Failed to fetch scripts'}`;
+          scriptsResults.innerHTML = `<div class="card"><pre class="mono">${JSON.stringify(j, null, 2)}</pre></div>`;
         }
       } catch (error) {
-        console.error('Error loading scripts:', error);
-        qs("#scriptsList").innerHTML = `<p class="muted">Error loading scripts: ${error.message}</p>`;
-        currentScripts = [];
+        scriptsStatus.textContent = `Error: ${error.message}`;
+        scriptsResults.innerHTML = `<div class="card"><p class="muted">Failed to load scripts. Please check your access token.</p></div>`;
       }
     }
 
-    // Note: Search functionality removed for performance - browse by pages instead
-
-    // Display scripts (shows current page scripts only)
-    function displayScripts() {
-      const scriptsList = qs("#scriptsList");
-
-      // Clear existing content but preserve the loading message
-      const existingContent = scriptsList.innerHTML;
-      scriptsList.innerHTML = '';
-
-      currentScripts.forEach((script, index) => {
-        const scriptDiv = document.createElement('div');
-        scriptDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;';
-
-        const truncatedScript = script.script && script.script.length > 200
-          ? script.script.substring(0, 200) + '...'
-          : script.script || '';
-
-        // Calculate global script number
-        const globalIndex = (currentScriptPage - 1) * 20 + index + 1;
-
-        scriptDiv.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-            <h4 style="margin: 0; color: #111827;">${script.title || `Script #${globalIndex}`}</h4>
-            <span class="badge" style="background: #f3f4f6; color: #6b7280;">${(script.script || '').length} chars</span>
-          </div>
-          <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">${truncatedScript}</p>
-        `;
-
-        scriptDiv.addEventListener('mouseenter', () => {
-          scriptDiv.style.borderColor = '#111827';
-          scriptDiv.style.background = '#f9fafb';
-        });
-
-        scriptDiv.addEventListener('mouseleave', () => {
-          scriptDiv.style.borderColor = '#e5e7eb';
-          scriptDiv.style.background = 'white';
-        });
-
-        scriptDiv.addEventListener('click', () => selectScript(script));
-
-        scriptsList.appendChild(scriptDiv);
-      });
-
-      // Update pagination info
-      const startItem = (currentScriptPage - 1) * 20 + 1;
-      const endItem = (currentScriptPage - 1) * 20 + currentScripts.length;
-
-      qs("#scriptPageInfo").textContent = `Page ${currentScriptPage} of ${totalScriptPages}`;
-      qs("#scriptRangeInfo").textContent = `${startItem}-${endItem}`;
-      qs("#totalScriptsInfo").textContent = totalScriptsCount;
-      qs("#prevScriptPage").disabled = currentScriptPage <= 1;
-      qs("#nextScriptPage").disabled = currentScriptPage >= totalScriptPages;
-    }
+    // Load scripts button handler
+    qs("#loadScriptsBtn").addEventListener("click", loadScripts);
 
     // Script selection
     function selectScript(script) {
@@ -639,40 +658,7 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       selectedScript = '';
     });
 
-    // Pagination buttons
-    qs("#prevScriptPage").addEventListener("click", () => {
-      if (currentScriptPage > 1) {
-        loadScriptPage(currentScriptPage - 1);
-      }
-    });
-
-    qs("#nextScriptPage").addEventListener("click", () => {
-      if (currentScriptPage < totalScriptPages) {
-        loadScriptPage(currentScriptPage + 1);
-      }
-    });
-
-    // Jump to page functionality
-    qs("#jumpToPageBtn").addEventListener("click", () => {
-      const targetPage = parseInt(qs("#jumpToPage").value);
-
-      if (targetPage >= 1 && targetPage <= totalScriptPages) {
-        loadScriptPage(targetPage);
-        qs("#jumpToPage").value = '';
-      } else {
-        alert(`Please enter a page number between 1 and ${totalScriptPages}`);
-      }
-    });
-
-    // Allow Enter key in jump to page input
-    qs("#jumpToPage").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        qs("#jumpToPageBtn").click();
-      }
-    });
-
-    // Refresh scripts
-    qs("#refreshScriptsBtn").addEventListener("click", loadExistingScripts);
+    // No longer need old pagination handlers - they're built into renderScripts function
 
     // Load avatars function
     async function loadAvatars() {
