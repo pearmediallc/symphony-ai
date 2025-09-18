@@ -1,8 +1,13 @@
 # TikTok Symphony AI Studio
 
-A professional web application for generating TikTok scripts and creating AI-powered digital avatar videos using the TikTok Business API.
+A secure web application for generating TikTok scripts and creating AI-powered digital avatar videos using the TikTok Business API.
 
 ## Features
+
+### 🔐 Authentication System
+- Secure login page with session management
+- Environment-based authentication credentials
+- Protected routes and API endpoints
 
 ### 📝 AI Script Generator
 - Generate creative TikTok scripts using AI
@@ -24,6 +29,7 @@ A professional web application for generating TikTok scripts and creating AI-pow
 ### Prerequisites
 - Python 3.8+
 - TikTok Business API Access Token
+- TikTok Advertiser ID
 
 ### Installation
 
@@ -38,7 +44,20 @@ cd sym
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+3. Configure environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+4. Update `.env` file with your values:
+- `AUTH_USERNAME`: Login username (default: admin)
+- `AUTH_PASSWORD`: Login password (default: password)
+- `TIKTOK_ACCESS_TOKEN`: Your TikTok API access token
+- `TIKTOK_ADVERTISER_ID`: Your TikTok advertiser ID
+- `SECRET_KEY`: Flask session secret key (change in production)
+
+5. Run the application:
 ```bash
 python app.py
 ```
@@ -47,10 +66,11 @@ The application will be available at `http://localhost:5000`
 
 ## Usage
 
-1. Navigate to the home page at `http://localhost:5000`
-2. Choose between Script Generator or Avatar Videos
-3. Enter your TikTok Business API Access Token
-4. Follow the step-by-step interface to generate content
+1. Navigate to `http://localhost:5000`
+2. Login with your configured credentials
+3. Choose between Script Generator or Avatar Videos
+4. The application automatically uses TikTok credentials from environment variables
+5. Follow the interface to generate content
 
 ## API Endpoints
 
@@ -75,9 +95,19 @@ The application will be available at `http://localhost:5000`
 
 ## Security
 
-- Access tokens are only used locally and sent to TikTok's official API
-- No tokens are stored on the server
-- All API calls are made through your local server
+- Login authentication required for all features
+- API credentials stored securely in environment variables
+- Session-based authentication with Flask sessions
+- Access tokens never exposed in frontend code
+- All API calls are made through your secure backend
+
+## Recent Changes
+
+- ✅ Added authentication system with login page
+- ✅ Removed manual input fields for access token and advertiser ID
+- ✅ Removed video/image upload functionality (use TikTok Ads Manager instead)
+- ✅ All API credentials now loaded from environment variables
+- ✅ Enhanced security with session management and protected routes
 
 ## License
 

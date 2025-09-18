@@ -1,35 +1,209 @@
 # app.py
 import os
 import requests
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for, render_template_string
 from flask_cors import CORS
+from functools import wraps
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 TIKTOK_BASE = "https://business-api.tiktok.com/open_api/v1.3"
 
 app = Flask(__name__, static_url_path="", static_folder="static")
 CORS(app, supports_credentials=True)
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here-change-this')
 
-def tt_headers(access_token: str):
+# Get auth credentials and API settings from environment
+AUTH_USERNAME = os.getenv('AUTH_USERNAME', 'admin')
+AUTH_PASSWORD = os.getenv('AUTH_PASSWORD', 'password')
+TIKTOK_ACCESS_TOKEN = os.getenv('TIKTOK_ACCESS_TOKEN', '')
+TIKTOK_ADVERTISER_ID = os.getenv('TIKTOK_ADVERTISER_ID', '')
+
+def tt_headers(access_token: str, content_type="application/json"):
     return {
         "Access-Token": access_token,
-        "Content-Type": "application/json"
+        "Content-Type": content_type
     }
 
+# Login HTML template
+LOGIN_HTML = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Login - TikTok Symphony AI Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+        }
+        h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #FF004F, #00F2EA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 32px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e1e2;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #FF004F;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #FF004F, #00F2EA);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 0, 79, 0.3);
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #FF004F, #00F2EA);
+            border-radius: 15px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="icon">🎬</div>
+        <h1>TikTok Symphony AI</h1>
+        <p class="subtitle">Sign in to continue</p>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus />
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required />
+
+            <button type="submit">Sign In</button>
+        </form>
+    </div>
+</body>
+</html>
+'''
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.get_json(force=True) if request.is_json else request.form
+        username = data.get('username', '')
+        password = data.get('password', '')
+
+        if username == AUTH_USERNAME and password == AUTH_PASSWORD:
+            session['logged_in'] = True
+            if request.is_json:
+                return jsonify({"success": True, "message": "Login successful"}), 200
+            return redirect(url_for('home'))
+        else:
+            if request.is_json:
+                return jsonify({"success": False, "message": "Invalid credentials"}), 401
+            return render_template_string(LOGIN_HTML, error="Invalid username or password")
+
+    return render_template_string(LOGIN_HTML)
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
 @app.route("/")
+@login_required
 def home():
     return send_from_directory("static", "index.html")
 
 @app.route("/script_generator")
 @app.route("/script_generator/")
+@login_required
 def script_generator():
     return send_from_directory("static/script_generator", "index.html")
 
 @app.route("/avatar")
 @app.route("/avatar/")
+@login_required
 def avatar():
     return send_from_directory("static/avatar", "index.html")
 
+@app.route('/api/get_config')
+@login_required
+def get_config():
+    """Return configuration values from environment"""
+    return jsonify({
+        "access_token": TIKTOK_ACCESS_TOKEN,
+        "advertiser_id": TIKTOK_ADVERTISER_ID
+    }), 200
+
 @app.post("/api/create_task")
+@login_required
 def create_task():
     """
     Body JSON:
@@ -49,7 +223,8 @@ def create_task():
     # Debug logging
     print(f"Received data: {data}")
 
-    access_token = data.get("access_token", "").strip()
+    # Use access token from environment if not provided
+    access_token = data.get("access_token", "").strip() or TIKTOK_ACCESS_TOKEN
     mode = data.get("mode", "CUSTOM")
 
     if not access_token:
@@ -127,13 +302,14 @@ def create_task():
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
 @app.get("/api/task_status")
+@login_required
 def task_status():
     """
     Query params:
       access_token=...
       task_id=...
     """
-    access_token = (request.args.get("access_token") or "").strip()
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
     task_id = (request.args.get("task_id") or "").strip()
     if not access_token or not task_id:
         return jsonify({"error": "access_token and task_id are required"}), 400
@@ -150,6 +326,7 @@ def task_status():
         return jsonify({"error": str(e)}), 500
 
 @app.get("/api/list_scripts")
+@login_required
 def list_scripts():
     """
     Query params:
@@ -157,7 +334,7 @@ def list_scripts():
       page=1
       page_size=20
     """
-    access_token = (request.args.get("access_token") or "").strip()
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
     if not access_token:
         return jsonify({"error": "access_token is required"}), 400
     page = int(request.args.get("page", 1))
@@ -175,6 +352,7 @@ def list_scripts():
         return jsonify({"error": str(e)}), 500
 
 @app.get("/api/get_avatars")
+@login_required
 def get_avatars():
     """
     Get available digital avatars.
@@ -183,7 +361,7 @@ def get_avatars():
       page=1 (optional)
       page_size=10 (optional)
     """
-    access_token = (request.args.get("access_token") or "").strip()
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
     if not access_token:
         return jsonify({"error": "access_token is required"}), 400
 
@@ -202,6 +380,7 @@ def get_avatars():
         return jsonify({"error": str(e)}), 500
 
 @app.post("/api/create_avatar_video_task")
+@login_required
 def create_avatar_video_task():
     """
     Create digital avatar video tasks.
@@ -219,7 +398,7 @@ def create_avatar_video_task():
     }
     """
     data = request.get_json(force=True) or {}
-    access_token = data.get("access_token", "").strip()
+    access_token = data.get("access_token", "").strip() or TIKTOK_ACCESS_TOKEN
     material_packages = data.get("material_packages", [])
 
     if not access_token:
@@ -248,6 +427,7 @@ def create_avatar_video_task():
         return jsonify({"error": str(e)}), 500
 
 @app.get("/api/get_avatar_video_task_status")
+@login_required
 def get_avatar_video_task_status():
     """
     Get the results of digital avatar video tasks.
@@ -255,7 +435,7 @@ def get_avatar_video_task_status():
       access_token=...
       task_ids=["task1","task2",...] (JSON array as string)
     """
-    access_token = (request.args.get("access_token") or "").strip()
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
     task_ids_str = (request.args.get("task_ids") or "").strip()
 
     if not access_token:
@@ -284,6 +464,7 @@ def get_avatar_video_task_status():
         return jsonify({"error": str(e)}), 500
 
 @app.get("/api/list_avatar_videos")
+@login_required
 def list_avatar_videos():
     """
     Get digital avatar videos under your account.
@@ -295,7 +476,7 @@ def list_avatar_videos():
       page=1 (optional)
       page_size=10 (optional)
     """
-    access_token = (request.args.get("access_token") or "").strip()
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
     if not access_token:
         return jsonify({"error": "access_token is required"}), 400
 
@@ -331,6 +512,7 @@ def list_avatar_videos():
         return jsonify({"error": str(e)}), 500
 
 @app.post("/api/update_avatar_video_name")
+@login_required
 def update_avatar_video_name():
     """
     Update the name of a digital avatar video.
@@ -342,7 +524,7 @@ def update_avatar_video_name():
     }
     """
     data = request.get_json(force=True) or {}
-    access_token = data.get("access_token", "").strip()
+    access_token = data.get("access_token", "").strip() or TIKTOK_ACCESS_TOKEN
     avatar_video_id = data.get("avatar_video_id", "").strip()
     file_name = data.get("file_name", "").strip()
 
@@ -368,6 +550,101 @@ def update_avatar_video_name():
         return jsonify(r.json()), r.status_code
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+@app.get("/api/get_video_info")
+@login_required
+def get_video_info():
+    """
+    Get detailed information about specific videos including thumbnail URLs
+    Query params:
+      access_token=...
+      advertiser_id=...
+      video_ids=["video_id1","video_id2"] (JSON array as string)
+    """
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
+    advertiser_id = (request.args.get("advertiser_id") or "").strip() or TIKTOK_ADVERTISER_ID
+    video_ids_str = (request.args.get("video_ids") or "").strip()
+
+    if not access_token or not advertiser_id or not video_ids_str:
+        return jsonify({"error": "access_token, advertiser_id and video_ids are required"}), 400
+
+    try:
+        import json
+        video_ids = json.loads(video_ids_str)
+        if not isinstance(video_ids, list):
+            return jsonify({"error": "video_ids must be a JSON array"}), 400
+    except:
+        return jsonify({"error": "video_ids must be a valid JSON array"}), 400
+
+    try:
+        # v1.3 endpoint for video info
+        r = requests.get(
+            f"{TIKTOK_BASE}/file/video/ad/info/",
+            headers={"Access-Token": access_token},
+            params={
+                "advertiser_id": advertiser_id,
+                "video_ids": json.dumps(video_ids)
+            },
+            timeout=30,
+        )
+
+        response_data = r.json()
+        print(f"Video info response: {response_data}")
+
+        return jsonify(response_data), r.status_code
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.get("/api/get_assets_videos")
+@login_required
+def get_assets_videos():
+    """
+    Get videos from TikTok Ads assets library.
+    Query params:
+      access_token=...
+      advertiser_id=...
+      page=1 (optional)
+      page_size=20 (optional)
+    """
+    access_token = (request.args.get("access_token") or "").strip() or TIKTOK_ACCESS_TOKEN
+    advertiser_id = (request.args.get("advertiser_id") or "").strip() or TIKTOK_ADVERTISER_ID
+
+    if not access_token:
+        return jsonify({"error": "access_token is required"}), 400
+    if not advertiser_id:
+        return jsonify({"error": "advertiser_id is required"}), 400
+
+    page = int(request.args.get("page", 1))
+    page_size = int(request.args.get("page_size", 20))
+
+    try:
+        params = {
+            "advertiser_id": advertiser_id,
+            "page": page,
+            "page_size": page_size
+        }
+
+        print(f"Fetching videos with params: {params}")
+
+        r = requests.get(
+            f"{TIKTOK_BASE}/file/video/ad/search/",
+            headers={"Access-Token": access_token},
+            params=params,
+            timeout=30,
+        )
+
+        response_data = r.json()
+        print(f"TikTok video search response: {response_data}")
+
+        return jsonify(response_data), r.status_code
+    except requests.RequestException as e:
+        print(f"Request error in get_assets_videos: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# Video/Image upload endpoints have been removed as per requirements
+
+
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
