@@ -370,14 +370,13 @@
     <div id="existingScriptsSection" style="display: none; margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
       <h4 style="margin-top: 0;">🔍 Select from Your Generated Scripts</h4>
 
-      <!-- Search Box -->
+      <!-- Simple navigation -->
       <div class="row" style="margin-bottom: 12px;">
         <div class="col">
-          <input id="scriptSearch" type="text" placeholder="🔍 Search scripts by title or content..." />
+          <p class="muted">Browse through your scripts using the pagination below. Click on any script to select it.</p>
         </div>
         <div style="flex: 0 0 auto;">
-          <button id="searchBtn" class="btn-primary" style="width: auto;">Search</button>
-          <button id="refreshScriptsBtn" class="btn-secondary" style="width: auto; margin-left: 8px;">↻ Refresh</button>
+          <button id="refreshScriptsBtn" class="btn-secondary" style="width: auto;">↻ Refresh</button>
         </div>
       </div>
 
@@ -453,10 +452,10 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
     let selectedAvatarId = null;
     let selectedAvatarName = '';
     let selectedScript = '';
-    let allScripts = [];
-    let filteredScripts = [];
-    let scriptsPage = 1;
-    let scriptsPerPage = 25; // Show more scripts per page
+    let currentScripts = [];
+    let currentScriptPage = 1;
+    let totalScriptPages = 1;
+    let totalScriptsCount = 0;
 
     // Variables to store config from backend
     let CONFIG = {
@@ -507,143 +506,57 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
       selectedScript = '';
     });
 
-    // Load existing scripts
+    // Load existing scripts (like script generator - one page at a time)
     async function loadExistingScripts() {
+      loadScriptPage(1);
+    }
+
+    async function loadScriptPage(page = 1) {
       const access_token = CONFIG.access_token;
       if (!access_token) {
         qs("#scriptsList").innerHTML = '<p class="muted">Access token not configured. Please check environment variables.</p>';
         return;
       }
 
-      qs("#scriptsList").innerHTML = '<p class="muted">Loading scripts...</p>';
+      currentScriptPage = page;
+      qs("#scriptsList").innerHTML = `<p class="muted">Loading scripts (page ${page})...</p>`;
 
       try {
-        // First, get the first page to know the total number of scripts
-        const firstResponse = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=1&page_size=20`);
-        const firstData = await firstResponse.json();
+        const response = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=20`);
+        const data = await response.json();
 
-        if (!firstData?.data?.page_info) {
-          qs("#scriptsList").innerHTML = '<p class="muted">No scripts found. Generate some scripts first!</p>';
-          return;
-        }
+        if (data?.data?.list) {
+          currentScripts = data.data.list;
+          totalScriptPages = data.data.page_info?.total_page || 1;
+          totalScriptsCount = data.data.page_info?.total_number || 0;
 
-        const totalScripts = firstData.data.page_info.total_number || 0;
-        const totalPages = firstData.data.page_info.total_page || 1;
+          displayScripts();
 
-        qs("#scriptsList").innerHTML = `<p class="muted">Loading ${totalScripts} scripts from ${totalPages} pages...</p>`;
-
-        // If there are many scripts, use a more efficient approach
-        if (totalScripts > 1000) {
-          // For large collections, load progressively
-          allScripts = [];
-          let loadedPages = 0;
-          const pageSize = 50; // Larger page size for efficiency
-
-          for (let page = 1; page <= Math.min(totalPages, Math.ceil(totalScripts / pageSize)); page++) {
-            try {
-              const response = await fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=${pageSize}`);
-              const data = await response.json();
-
-              if (data?.data?.list) {
-                allScripts = allScripts.concat(data.data.list);
-                loadedPages++;
-
-                // Update progress every 10 pages
-                if (loadedPages % 10 === 0) {
-                  qs("#scriptsList").innerHTML = `<p class="muted">Loading scripts... ${allScripts.length} of ${totalScripts} loaded (${Math.round(allScripts.length/totalScripts*100)}%)</p>`;
-                }
-              }
-            } catch (error) {
-              console.warn(`Failed to load page ${page}:`, error);
-            }
-          }
+          qs("#scriptsList").innerHTML = `<p class="muted">Showing ${currentScripts.length} scripts from page ${page}</p>`;
         } else {
-          // For smaller collections, load all pages in parallel
-          const promises = [];
-          for (let page = 1; page <= totalPages; page++) {
-            promises.push(
-              fetch(`/api/list_scripts?access_token=${encodeURIComponent(access_token)}&page=${page}&page_size=20`)
-                .then(r => r.json())
-                .catch(err => {
-                  console.warn(`Failed to load page ${page}:`, err);
-                  return null;
-                })
-            );
-          }
-
-          const responses = await Promise.all(promises);
-          allScripts = [];
-
-          responses.forEach(data => {
-            if (data?.data?.list) {
-              allScripts = allScripts.concat(data.data.list);
-            }
-          });
-        }
-
-        if (allScripts.length === 0) {
           qs("#scriptsList").innerHTML = '<p class="muted">No scripts found. Generate some scripts first!</p>';
-          return;
+          currentScripts = [];
+          totalScriptPages = 1;
+          totalScriptsCount = 0;
         }
-
-        // Remove duplicates (just in case)
-        const uniqueScripts = [];
-        const seenIds = new Set();
-        allScripts.forEach(script => {
-          const id = script.script_id || script.id || `${script.script}_${script.create_time}`;
-          if (!seenIds.has(id)) {
-            seenIds.add(id);
-            uniqueScripts.push(script);
-          }
-        });
-        allScripts = uniqueScripts;
-
-        qs("#scriptsList").innerHTML = `<p class="muted">✅ Loaded ${allScripts.length} scripts successfully! Use search to find specific scripts.</p>`;
-        filteredScripts = allScripts;
-        displayScripts();
-
       } catch (error) {
         console.error('Error loading scripts:', error);
         qs("#scriptsList").innerHTML = `<p class="muted">Error loading scripts: ${error.message}</p>`;
+        currentScripts = [];
       }
     }
 
-    // Search functionality
-    qs("#searchBtn").addEventListener("click", performSearch);
-    qs("#scriptSearch").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") performSearch();
-    });
+    // Note: Search functionality removed for performance - browse by pages instead
 
-    function performSearch() {
-      const searchTerm = qs("#scriptSearch").value.toLowerCase().trim();
-
-      if (!searchTerm) {
-        filteredScripts = allScripts;
-      } else {
-        filteredScripts = allScripts.filter(script => {
-          const title = (script.title || '').toLowerCase();
-          const content = (script.script || '').toLowerCase();
-          return title.includes(searchTerm) || content.includes(searchTerm);
-        });
-      }
-
-      scriptsPage = 1;
-      displayScripts();
-
-      if (filteredScripts.length === 0) {
-        qs("#scriptsList").innerHTML = `<p class="muted">No scripts found matching "${searchTerm}"</p>`;
-      }
-    }
-
-    // Display scripts with pagination
+    // Display scripts (shows current page scripts only)
     function displayScripts() {
-      const start = (scriptsPage - 1) * scriptsPerPage;
-      const end = start + scriptsPerPage;
-      const pageScripts = filteredScripts.slice(start, end);
+      const scriptsList = qs("#scriptsList");
 
-      qs("#scriptsList").innerHTML = '';
+      // Clear existing content but preserve the loading message
+      const existingContent = scriptsList.innerHTML;
+      scriptsList.innerHTML = '';
 
-      pageScripts.forEach((script, index) => {
+      currentScripts.forEach((script, index) => {
         const scriptDiv = document.createElement('div');
         scriptDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;';
 
@@ -651,9 +564,12 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
           ? script.script.substring(0, 200) + '...'
           : script.script || '';
 
+        // Calculate global script number
+        const globalIndex = (currentScriptPage - 1) * 20 + index + 1;
+
         scriptDiv.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-            <h4 style="margin: 0; color: #111827;">${script.title || `Script #${start + index + 1}`}</h4>
+            <h4 style="margin: 0; color: #111827;">${script.title || `Script #${globalIndex}`}</h4>
             <span class="badge" style="background: #f3f4f6; color: #6b7280;">${(script.script || '').length} chars</span>
           </div>
           <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5;">${truncatedScript}</p>
@@ -671,19 +587,18 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
 
         scriptDiv.addEventListener('click', () => selectScript(script));
 
-        qs("#scriptsList").appendChild(scriptDiv);
+        scriptsList.appendChild(scriptDiv);
       });
 
-      // Update pagination
-      const totalPages = Math.ceil(filteredScripts.length / scriptsPerPage);
-      const startItem = (scriptsPage - 1) * scriptsPerPage + 1;
-      const endItem = Math.min(scriptsPage * scriptsPerPage, filteredScripts.length);
+      // Update pagination info
+      const startItem = (currentScriptPage - 1) * 20 + 1;
+      const endItem = (currentScriptPage - 1) * 20 + currentScripts.length;
 
-      qs("#scriptPageInfo").textContent = `Page ${scriptsPage} of ${totalPages}`;
+      qs("#scriptPageInfo").textContent = `Page ${currentScriptPage} of ${totalScriptPages}`;
       qs("#scriptRangeInfo").textContent = `${startItem}-${endItem}`;
-      qs("#totalScriptsInfo").textContent = filteredScripts.length;
-      qs("#prevScriptPage").disabled = scriptsPage <= 1;
-      qs("#nextScriptPage").disabled = scriptsPage >= totalPages;
+      qs("#totalScriptsInfo").textContent = totalScriptsCount;
+      qs("#prevScriptPage").disabled = currentScriptPage <= 1;
+      qs("#nextScriptPage").disabled = currentScriptPage >= totalScriptPages;
     }
 
     // Script selection
@@ -726,31 +641,26 @@ Example: 'Hello! Welcome to our amazing product. With our innovative solution, y
 
     // Pagination buttons
     qs("#prevScriptPage").addEventListener("click", () => {
-      if (scriptsPage > 1) {
-        scriptsPage--;
-        displayScripts();
+      if (currentScriptPage > 1) {
+        loadScriptPage(currentScriptPage - 1);
       }
     });
 
     qs("#nextScriptPage").addEventListener("click", () => {
-      const totalPages = Math.ceil(filteredScripts.length / scriptsPerPage);
-      if (scriptsPage < totalPages) {
-        scriptsPage++;
-        displayScripts();
+      if (currentScriptPage < totalScriptPages) {
+        loadScriptPage(currentScriptPage + 1);
       }
     });
 
     // Jump to page functionality
     qs("#jumpToPageBtn").addEventListener("click", () => {
       const targetPage = parseInt(qs("#jumpToPage").value);
-      const totalPages = Math.ceil(filteredScripts.length / scriptsPerPage);
 
-      if (targetPage >= 1 && targetPage <= totalPages) {
-        scriptsPage = targetPage;
-        displayScripts();
+      if (targetPage >= 1 && targetPage <= totalScriptPages) {
+        loadScriptPage(targetPage);
         qs("#jumpToPage").value = '';
       } else {
-        alert(`Please enter a page number between 1 and ${totalPages}`);
+        alert(`Please enter a page number between 1 and ${totalScriptPages}`);
       }
     });
 
