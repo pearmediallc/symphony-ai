@@ -189,10 +189,21 @@
       padding: 20px;
       margin-bottom: 16px;
       transition: all 0.3s ease;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
     }
 
     .card:hover {
       box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    /* Ensure pre tags wrap properly */
+    .card pre {
+      white-space: pre-wrap !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      max-width: 100%;
     }
 
     .badge {
@@ -347,6 +358,64 @@
       .nav-links { display: none; }
       h1 { font-size: 1.8rem; }
       .main-card { padding: 20px; }
+
+      .container {
+        padding: 0 16px;
+      }
+
+      .card {
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .row {
+        flex-direction: column;
+      }
+
+      .col {
+        min-width: 100%;
+        flex: 1 1 100%;
+      }
+
+      /* Fix script content overflow on mobile */
+      .card div[style*="max-height: 200px"] {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+      }
+
+      /* Adjust button layouts for mobile */
+      .btn-primary, .btn-secondary, .btn-success {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      /* Stack pagination buttons on mobile */
+      .card div[style*="margin-top: 12px"] button {
+        margin: 4px;
+      }
+
+      /* Ensure script IDs don't overflow */
+      .badge.mono {
+        font-size: 10px;
+        padding: 3px 8px;
+        word-break: break-all;
+      }
+
+      /* Video grid responsive */
+      .video-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        padding: 8px;
+      }
+
+      .tab-buttons {
+        flex-wrap: wrap;
+      }
+
+      .tab-button {
+        flex: 1 1 auto;
+        min-width: 100px;
+      }
     }
   </style>
 </head>
@@ -572,18 +641,18 @@
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
-          <div class="row" style="justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <div>
+          <div class="row" style="justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
               <span class="badge mono">Script #${((pageInfo?.page || 1) - 1) * 20 + index + 1}</span>
               <span class="badge mono">ID: ${s.script_id || "N/A"}</span>
             </div>
-            <button class="btn-secondary" data-copy="${(s.script || "").replace(/"/g, "&quot;")}">📋 Copy Script</button>
+            <button class="btn-secondary" data-copy="${(s.script || "").replace(/"/g, "&quot;")}" style="white-space: nowrap;">📋 Copy Script</button>
           </div>
-          <h3 style="margin:0 0 8px 0; color: #111827;">${s.title || "Generated Script"}</h3>
-          <div style="max-height: 200px; overflow-y: auto; background: #f8fafc; padding: 12px; border-radius: 6px;">
-            <pre class="mono" style="white-space:pre-wrap; font-size:13px; margin:0;">${s.script || "No script content"}</pre>
+          <h3 style="margin:0 0 8px 0; color: #111827; word-wrap: break-word;">${s.title || "Generated Script"}</h3>
+          <div style="max-height: 200px; overflow-y: auto; overflow-x: hidden; background: #f8fafc; padding: 12px; border-radius: 6px; max-width: 100%;">
+            <pre class="mono" style="white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; font-size:13px; margin:0; max-width:100%;">${s.script || "No script content"}</pre>
           </div>
-          <div class="muted" style="margin-top: 8px; font-size: 11px;">
+          <div class="muted" style="margin-top: 8px; font-size: 11px; word-wrap: break-word;">
             Characters: ${(s.script || "").length} |
             Created: ${s.create_time || "Unknown"} |
             Updated: ${s.update_time || "Unknown"}
